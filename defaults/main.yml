@@ -1,2 +1,3 @@
 ---
 # defaults file for tftp
+tftp_default_dir: /srv/tftp

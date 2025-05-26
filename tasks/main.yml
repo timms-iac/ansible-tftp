@@ -21,7 +21,7 @@
 - name: Get service information
   ansible.builtin.set_fact:
     tftp_service: |
-      {% set tftp = { "dir": default_tftp_dir, "ips": [ansible_host], "ports": [69] } %}
+      {% set tftp = { "dir": tftp_default_dir, "ips": [ansible_host], "ports": [69], "opt": "--secure" } %}
       {% for service in nb_services %}
       {% if "TFTP" == service.value.name and service.value.device.name == inventory_hostname and service.value.custom_fields.Directory is defined and service.value.ipaddresses is defined and service.value.custom_fields.User is defined and service.value.custom_fields.Options is defined %}
       {% set _ = tftp.update({"dir": service.value.custom_fields.Directory, "user": service.value.custom_fields.User, "opt": service.value.custom_fields.Options, "ips": [], "ports": service.value.ports }) %}
@@ -52,7 +52,7 @@
 
 - name: "!!! WARNING !!!"
   fail:
-    msg: "Service has more than one IP defined. I will only bind to the first IP. Use 0.0.0.0 to bind to all IPs."
+    msg: "Service has more than one IP defined. I will only bind to the first IP."
   ignore_errors: yes
   when: tftp_service.ips | length > 1
 
