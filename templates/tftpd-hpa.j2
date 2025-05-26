@@ -1,0 +1,6 @@
+# /etc/default/tftpd-hpa
+
+TFTP_USERNAME="{{ tftp_service.user }}"
+TFTP_DIRECTORY="{{ tftp_service.dir }}"
+TFTP_ADDRESS="{{ tftp_service.ips[0]}}:{{ tftp_service.ports[0] }}"
+TFTP_OPTIONS="{{ tftp_service.opt }}"

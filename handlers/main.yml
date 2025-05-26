@@ -1,2 +1,6 @@
 ---
 # handlers file for tftp
+    - name: Restart tftpd
+      ansible.builtin.service:
+        name: tftpd-hpa
+        state: restarted

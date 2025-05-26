@@ -1,2 +1,82 @@
 ---
 # tasks file for tftp
+#- name: Print all available facts
+#  ansible.builtin.debug:
+#    var: ansible_facts
+#
+#- ansible.builtin.meta: end_play
+#
+- name: Install tftp
+  ansible.builtin.package:
+    name: tftpd-hpa
+    state: present
+  become: true
+
+- name: Get service information
+  ansible.builtin.set_fact:
+    nb_services: '{{ query("netbox.netbox.nb_lookup", "services",
+      api_endpoint=ansible_nb_url,
+      token=ansible_nb_token) }}'
+
+- name: Get service information
+  ansible.builtin.set_fact:
+    tftp_service: |
+      {% set tftp = { "dir": default_tftp_dir, "ips": [ansible_host], "ports": [69] } %}
+      {% for service in nb_services %}
+      {% if "TFTP" == service.value.name and service.value.device.name == inventory_hostname and service.value.custom_fields.Directory is defined and service.value.ipaddresses is defined and service.value.custom_fields.User is defined and service.value.custom_fields.Options is defined %}
+      {% set _ = tftp.update({"dir": service.value.custom_fields.Directory, "user": service.value.custom_fields.User, "opt": service.value.custom_fields.Options, "ips": [], "ports": service.value.ports }) %}
+      {% for addr in service.value.ipaddresses %}
+      {% if addr.address.split("/")[0] in ansible_facts.all_ipv4_addresses %}
+      {% set _ = tftp["ips"].append(addr.address.split("/")[0]) %}
+      {% endif %}
+      {% endfor %}
+      {% endif %}
+      {% endfor %}
+      {{ tftp }}
+
+- name: Show tftp_service
+  ansible.builtin.debug:
+    var: tftp_service
+      #  tags:
+      #    - never
+      #    - tftp_debug
+
+- name: Create tftp directory
+  ansible.builtin.file:
+    path: "{{ tftp_service.dir }}"
+    state: directory
+    mode: 0777
+    owner: nobody
+    group: nogroup
+  become: true
+
+- name: "!!! WARNING !!!"
+  fail:
+    msg: "Service has more than one IP defined. I will only bind to the first IP. Use 0.0.0.0 to bind to all IPs."
+  ignore_errors: yes
+  when: tftp_service.ips | length > 1
+
+- name: "!!! WARNING !!!"
+  fail:
+    msg: "Service has more than one port defined. I will only bind to the first port."
+  ignore_errors: yes
+  when: tftp_service.ports | length > 1
+
+- name: Configure  tftp
+  ansible.builtin.template:
+    src: templates/tftpd-hpa.j2
+    dest: /etc/default/tftpd-hpa
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  notify: 
+    - Restart tftp
+
+- name: Start service tftp
+  ansible.builtin.service:
+    name: tftpd-hpa
+    state: started
+    enabled: true
+  become: true
+
